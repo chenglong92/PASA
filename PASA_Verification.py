@@ -335,10 +335,7 @@ if __name__ == "__main__":
     attention_mask = None
     #
     # init afa0
-    if InputDtype == torch.float16:
-        afa = torch.tensor(0.9375).float()
-    elif InputDtype == torch.bfloat16:
-        afa = torch.tensor(0.9689939).float()
+    afa = torch.tensor(0.984497).float()
     #
     Tiling_Para = tiling_par(baseM, baseN, head_size, afa)
     Tiling_Para.constructM(Tiling_Para.s2)

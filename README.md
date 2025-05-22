@@ -61,3 +61,10 @@ after the parameter setup, just run:
 ```bash
 python PASA_Verification.py
 ```
+
+### 4. optimal parater calculation
+Just run:
+```
+python optimal_para.py
+```
+In the ```PASA_Verification.py```, the optimal parameter is fixed to $afa = 0.9689939$.
