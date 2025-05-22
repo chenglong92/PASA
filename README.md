@@ -1,13 +1,13 @@
 ## PASA: online pseudo-average shifting Attention for Long-sequence LLM inference
 
-### Introduction
+### 1. Introduction
 PASA algorithm is developed for accelerating attention calculation using fully low-precision computing like fp16. It is numerically robust and will not suffer from the numerical stability like overflow and large numerical error caused by the large rounding error. It is quite effective for memory-restricted and vector-computing-power-restricted AI architectures like NPU. 
 
-### Verification Platform
-**[Hardware]**: Ascend NPU (Atlas 800I - A2)
+### 2. Verification Platform
+**[Hardware]**: Ascend NPU (Atlas 800I - A2)  
 **[Software]**: CANN 8.0.0 and Torch-NPU
 
-### Installation
+### 3. Installation
 > Step 1: install CANN driver and ops libraries
 ```bash
 wget --no-check-certificate https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%208.0.0/Ascend-cann-toolkit_8.0.0_linux-aarch64.run
@@ -52,7 +52,7 @@ sub_case_no = 1   # represent random dataset with normal + Bernoulli hybrid dist
 
 In addition, the ```mean_val``` controls the mean value of the generated data, while the ```Am`` controls the amplitude of the generated datases. In PASA's paper, the candidates are:
 
-｜ ```mean_val``` ｜ ```Am``` ｜
+| ```mean_val``` | ```Am``` |
 | :------: | :------: |
 |  $0, 10, 20, 30$ | $0.5, 5, 10, 20$ |
 
