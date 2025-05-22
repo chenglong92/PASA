@@ -10,23 +10,25 @@ import random
 from torch.library import Library, impl
 from compare import dataCompare
 
-def gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val = 0, distype = 0, gendatatype = torch.float32, datatype = torch.float16, seed = 2024724):
+def gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val = 0, Am = 0.5, distype = 0, gendatatype = torch.float32, datatype = torch.float16, seed = 2024724):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if (distype == 0):
         # uniform random distribution
-        q = torch.rand(batch_size, num_heads, seq_len1, head_size, dtype=gendatatype) - 0.5 + mean_val
-        k = torch.rand(batch_size, num_kv_heads, seq_len2, head_size, dtype=gendatatype) - 0.5 + mean_val
-        v = torch.rand(batch_size, num_kv_heads, seq_len2, head_size, dtype=gendatatype) - 0.5 + mean_val
+        #Am = 1.0
+        q = (torch.rand(batch_size, num_heads, seq_len1, head_size, dtype=gendatatype) - 0.5) * 2.0 * Am + mean_val
+        k = (torch.rand(batch_size, num_kv_heads, seq_len2, head_size, dtype=gendatatype) - 0.5) * 2.0 * Am + mean_val
+        v = (torch.rand(batch_size, num_kv_heads, seq_len2, head_size, dtype=gendatatype) - 0.5) * 2.0 * Am + mean_val
     if (distype == 1):
         # hybrid random distribution(normal + Bernoulli)
+        #Am = 10.0
         q = torch.normal(mean_val, 1, size=(batch_size, num_heads, seq_len1, head_size), dtype = gendatatype)
-        q += torch.normal(0, 10, size=(batch_size, num_heads, seq_len1, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_heads, seq_len1, head_size), n = 1, p = 0.001)
+        q += torch.normal(0, Am, size=(batch_size, num_heads, seq_len1, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_heads, seq_len1, head_size), n = 1, p = 0.001)
         k = torch.normal(mean_val, 1, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype)
-        k += torch.normal(0, 10, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_kv_heads, seq_len2, head_size), n = 1, p = 0.001)
+        k += torch.normal(0, Am, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_kv_heads, seq_len2, head_size), n = 1, p = 0.001)
         v = torch.normal(mean_val, 1, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype)
-        v += torch.normal(0, 10, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_kv_heads, seq_len2, head_size), n = 1, p = 0.001)
+        v += torch.normal(0, Am, size=(batch_size, num_kv_heads, seq_len2, head_size), dtype = gendatatype) * np.random.binomial(size=(batch_size, num_kv_heads, seq_len2, head_size), n = 1, p = 0.001)
         #
     q = q.type(datatype)
     k = k.type(datatype)
@@ -279,6 +281,7 @@ if __name__ == "__main__":
             head_size = 128
             #
             mean_val = 30.0
+            Am = 0.5
             distype = int(0)
             #
             # input data: Q K V and output Q datatype: torch.float16 and torch.bfloat16
@@ -287,7 +290,7 @@ if __name__ == "__main__":
             #
             attention_mask_stat = False
             #
-            q_cpu, k_cpu, v_cpu = gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val, distype, torch.float32, InputDtype)
+            q_cpu, k_cpu, v_cpu = gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val, Am, distype, torch.float32, InputDtype)
             q = q_cpu.npu(device_id)
             k = k_cpu.npu(device_id)
             v = v_cpu.npu(device_id)
@@ -301,6 +304,7 @@ if __name__ == "__main__":
             head_size = 128
             #
             mean_val = 30.0
+            Am = 10.0
             distype = int(1)
             # input data: Q K V and output Q datatype: torch.float16 and torch.bfloat16
             InputDtype = torch.bfloat16
@@ -308,7 +312,7 @@ if __name__ == "__main__":
             #
             attention_mask_stat = False
             #
-            q_cpu, k_cpu, v_cpu = gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val, distype, torch.float32, InputDtype)
+            q_cpu, k_cpu, v_cpu = gendata(batch_size, num_heads, num_kv_heads, seq_len1, seq_len2, head_size, mean_val, Am, distype, torch.float32, InputDtype)
             q = q_cpu.npu(device_id)
             k = k_cpu.npu(device_id)
             v = v_cpu.npu(device_id)

@@ -10,11 +10,29 @@ PASA algorithm is developed for accelerating attention calculation using fully l
 ### Installation
 > Step 1: install CANN driver and ops libraries
 ```
+wget --no-check-certificate https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%208.0.0/Ascend-cann-toolkit_8.0.0_linux-aarch64.run
 
-
+wget --no-check-certificate https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%208.0.0/Ascend-cann-kernels-910_8.0.0_linux-aarch64.run
+```
+```
+chmod +x Ascend-cann-toolkit_8.0.0_linux-aarch64.run
+./Ascend-cann-toolkit_8.0.0_linux-aarch64.run
+chmod +x Ascend-cann-kernels-910_8.0.0_linux-aarch64.run
+./Ascend-cann-kernels-910_8.0.0_linux-aarch64.run
+```
+```
+source $ASCEND_INSTALL_PATH/ascend-toolkit/set_env.sh
 ```
 
 > Step 2: Install pytorch and torch\_npu in conda
+```
+conda create -n env_name python=3.9
+conda activate env_name
+```
+```
+conda install pyyaml setuptools wheel typing_extensions numpy protobuf attrs pathlib2 scipy requests psutil absl-py decorator
+```
+
 ```
 pip install pytorch==2.1.0
 pip install torch_npu==2.1.0
@@ -32,9 +50,14 @@ sub_case_no = 0   # represent random dataset with uniform distritbuion
 sub_case_no = 1   # represent random dataset with normal + Bernoulli hybrid distribution in FA3.0
 ```
 
-In addition, the ```mean_val``` controls the mean value of the generated data 
+In addition, the ```mean_val``` controls the mean value of the generated data, while the ```Am`` controls the amplitude of the generated datases. In PASA's paper, the candidates are:
+
+| :------: | :------: |
+| ```mean_val``` |  $0, 10, 20, 30$ |
+| ```Am``` |    $0.5, 5, 10, 20$  |
 
 
-
-
-
+after the parameter setup, just run: 
+```
+python PASA_Verification.py
+```
