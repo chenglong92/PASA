@@ -1,4 +1,4 @@
-## "Topic: GPU+PyTorch+Triton" Starting Tutorial
+## Topic: GPU+PyTorch+Triton Starting Tutorial
 
 ---
 
@@ -335,7 +335,7 @@ Processing [nsys_easy.sqlite] with [/home/software/cuda-12.3/nsight-systems-2023
 
 &emsp;目前LLM基本都是在PyTorch的pythonic环境下开发使用，为了实现CUDA函数在PyTorch的自然集成，需要用到```torch.utils.cpp_extension```和```torch/extension.h```，并利用```pybind11```完成pytorch下对CUDA-C/C++函数的调用。https://github.com/gau-nernst/learn-cuda中了给了10个示例教程，这里给出```01-vector addition```的代码示例。
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026145512062.png" alt="image-20251026145512062" style="zoom:40%;" />
+<img src="./pictures/image-20251026145512062.png" alt="image-20251026145512062" style="zoom:40%;" />
 
 ```c++
 // add.cu
@@ -638,7 +638,7 @@ with torch.profiler.profile(
 
 profiling结果如下：
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026160214958.png" alt="image-20251026160214958" style="zoom:50%;" />
+<img src="./pictures/image-20251026160214958.png" alt="image-20251026160214958" style="zoom:50%;" />
 
 **作为对比**：
 
@@ -654,7 +654,7 @@ for iter in range(10):
         p.step()
 ```
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026162830112.png" alt="image-20251026162830112" style="zoom:50%;" />
+<img src="./pictures/image-20251026162830112.png" alt="image-20251026162830112" style="zoom:50%;" />
 
 (b) 类型二
 
@@ -669,7 +669,7 @@ for iter in range(10):
         p.step()
 ```
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026162947196.png" alt="image-20251026162947196" style="zoom:50%;" />
+<img src="./pictures/image-20251026162947196.png" alt="image-20251026162947196" style="zoom:50%;" />
 
 (c) 类型三
 
@@ -684,7 +684,7 @@ for iter in range(10):
         p.step()
 ```
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026163203772.png" alt="image-20251026163203772" style="zoom:50%;" />
+<img src="./pictures/image-20251026163203772.png" alt="image-20251026163203772" style="zoom:50%;" />
 
 (d) 类型四
 
@@ -699,10 +699,9 @@ for iter in range(10):
         p.step()
 ```
 
-<img src="/Users/chenglong/Library/Application Support/typora-user-images/image-20251026163340731.png" alt="image-20251026163340731" style="zoom:50%;" />
+<img src="./pictures/image-20251026163340731.png" alt="image-20251026163340731" style="zoom:50%;" />
 
 #### (7) CUDA Kernel基本优化方法
-
 
 
 
