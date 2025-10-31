@@ -20,7 +20,9 @@
 | **Hopper**    | H100       | 9.0      | `-arch=sm_90` | 数据中心卡         | 11.8+        |
 | **Blackwell** | B200       | 9.0+     | `-arch=sm_90` | 目前使用Hopper参数 | 12.0+        |
 
+<img src="./pictures/image-20251030145348766.png" alt="image-20251030145348766" style="zoom:50%;" />
 
+(From NVIDIA CUDA Compiler Driver, same with PTX)
 
 ### 1. Building Environment
 
@@ -191,6 +193,12 @@ add<<<1, 1>>>(N, sum, x, y);
 
 #### (4) nvcc编译
 
+> **编译选项**：
+>
+> ​         ```--gpu-architecture```  :  指定virtual architecture(PTX),  例如：compute_80, compute_90
+>
+> ​         ```--gpu-code```: 指定real architecture, 例如：sm_80, sm_86
+
 * 基础编译命令：直接得到可执行文件
 
 ```bash
@@ -245,6 +253,61 @@ nvcc -arch=sm_80 -o add add.cu
 (pytorch) lthpc@gnode02:~/chengl/Programming> ./add
 Max error: 0
 ```
+
+* CUDA编译基本设计原理
+
+&emsp;为了尽可能提升CUDA代码的跨平台兼容性，CUDA的编译过程分别针对两级架构：```virtual intermediate architecture(VIA)```和```real GPU architecture(RGA)```. 两级架构的中间表示为```PTX```，```PTX```可以看做```VIA```的```Assembly code```和```RGA```的源代码，```PTX```的选择应该使```VIA```尽可能```low-level```，而```RGA```尽可能的```high-level```. 如果需要尽可能提高应用代码的可移植性(不确定GPU的平台)，可以采用```just-in-time```编译方式，但是```JIT```一个缺点是程序``startup delay``过长，解决该问题的两个方法分别是：`compilation cache`和`Fatbinaries`。
+
+```shell
+# JIT compilation
+nvcc x.cu --gpu-architecture=compute_90 --gpu-code=compute_90
+```
+
+```shell
+# Fatbinaries: This command generates exact code for two architectures, plus PTX code for use by JIT in case a next generation GPU is encountered.
+nvcc x.cu --gpu-architecture=compute_80 --gpu-code=compute_80,sm_86,sm_89
+```
+
+&emsp;下面给出了CUDA代码常规两级编译流程和```JIT```编译流程示意图。
+
+（1）CUDA代码常规两级编译流程
+
+```mermaid
+graph TD
+    A[源代码] --> B[预处理]
+    B --> C[编译为PTX中间代码]
+    C --> D{编译模式}
+    D -->|整体程序编译| E[直接生成可执行文件]
+    D -->|单独编译| F[汇编为SASS]
+    F --> G[链接成最终二进制文件]
+```
+
+（2）JIT编译流程
+
+```mermaid
+graph TD
+    A[源代码] --> B[代码解析]
+    B --> C{中间表示}
+    C -->|LLVM IR/PTX| D[动态优化]
+    D --> E[机器码生成]
+    E --> F[GPU执行]
+    F --> G[结果输出]
+
+    subgraph 编译流程
+        C -->|PTX中间代码| H[编译器]
+        H --> I[优化器]
+        I --> J[代码生成器]
+        J --> K[目标架构机器码]
+    end
+
+    subgraph 执行阶段
+        K --> L[GPU执行引擎]
+        L --> M[线程调度]
+        M --> N[计算结果]
+    end
+```
+
+
 
 #### (5) cuda原生性能Profiling采集工具: ```nsys```
 
@@ -702,6 +765,152 @@ for iter in range(10):
 <img src="./pictures/image-20251026163340731.png" alt="image-20251026163340731" style="zoom:50%;" />
 
 #### (7) CUDA Kernel基本优化方法
+
+
+
+
+
+
+
+
+
+### 4. TensorRT-LLM
+
+在NVIDIA A100 GPU上部署TensorRT-LLM能显著提升大语言模型的推理性能。下面我将为你梳理详细的安装步骤、模型部署流程以及性能测试方法。
+
+### 🛠️ TensorRT-LLM 安装指南
+
+TensorRT-LLM的安装主要有以下几种方式，你可以根据需求选择：
+
+| 安装方式     | 适用场景               | 说明                                       |
+| :----------- | :--------------------- | :----------------------------------------- |
+| **PIP 安装** | 快速开始，无需复杂配置 | 一条命令即可完成，适合体验和快速原型验证。 |
+| **NGC 容器** | 保证环境一致性和隔离性 | 推荐用于生产环境，避免了依赖冲突。         |
+| **源码编译** | 需要最新特性或特定定制 | 过程最复杂，但能获取最前沿的功能。         |
+
+考虑到你已具备PyTorch和GPU驱动环境，**推荐使用PIP安装**以快速上手。
+
+1.  **安装依赖**：确保系统具备必要的编译工具和库。
+    ```bash
+    sudo apt-get -y install libopenmpi-dev python3-pip
+    ```
+2.  **安装TensorRT-LLM**：使用pip从NVIDIA官方索引安装。
+    ```bash
+    pip3 install --upgrade pip setuptools
+    pip3 install tensorrt_llm -U --extra-index-url https://pypi.nvidia.com
+    ```
+    安装成功后，可以在终端中输入`pip list | grep tensorrt`来确认安装版本。
+3.  **验证安装**：在Python环境中导入TensorRT-LLM包来验证安装是否成功。
+    ```python
+    python3 -c "import tensorrt_llm; print(tensorrt_llm.__version__)"
+    ```
+    如果能够成功导入并打印出版本号，则说明安装成功。
+
+### 🚀 大模型部署与推理
+
+TensorRT-LLM部署模型的核心流程是：先将Hugging Face格式的模型转换为TensorRT-LLM格式，然后构建优化后的推理引擎，最后执行推理。
+
+```mermaid
+flowchart TD
+    A[Hugging Face模型] --> B[模型转换]
+    B --> C[构建TRT引擎]
+    C --> D{性能测试}
+    D -- 命令行快速测试 --> E[run.py脚本]
+    D -- 基准测试 --> F[trtllm-bench工具]
+    D -- 启动API服务 --> G[trtllm-serve]
+    G --> H[HTTP请求调用]
+```
+
+我们以 **Qwen1.5-4B-Chat** 模型为例，展示部署的全过程。
+
+1.  **获取模型**
+    从魔搭社区（ModelScope）下载模型：
+    ```bash
+    git lfs install
+    git clone https://modelscope.cn/qwen/Qwen1.5-4B-Chat.git
+    ```
+
+2.  **模型转换与引擎构建**
+    首先需要获取TensorRT-LLM的示例代码：
+    ```bash
+    wget https://github.com/NVIDIA/TensorRT-LLM/archive/refs/tags/v0.10.0.tar.gz
+    tar xvf v0.10.0.tar.gz
+    cd TensorRT-LLM-0.10.0/examples/qwen
+    ```
+    安装模型依赖并执行转换：
+    ```bash
+    pip install -r requirements.txt
+    # 将模型转换为TensorRT-LLM格式的检查点
+    python3 convert_checkpoint.py --model_dir /path/to/Qwen1.5-4B-Chat \
+                                  --output_dir /path/to/trt_checkpoint \
+                                  --dtype float16
+    # 构建TensorRT推理引擎
+    trtllm-build --checkpoint_dir /path/to/trt_checkpoint \
+                 --output_dir /path/to/trt_engines/qwen/1-gpu \
+                 --gemm_plugin float16
+    ```
+    **关键参数说明**：
+    *   `--model_dir`: 输入模型路径。
+    *   `--output_dir`: 转换后或构建引擎的输出路径。
+    *   `--dtype`: 计算精度，`float16` 在A100上能较好平衡性能与精度。
+    *   `--gemm_plugin`: 使用插件加速矩阵乘法，建议开启。
+
+3.  **执行推理测试**
+    引擎构建成功后，可以使用附带的`run.py`脚本进行快速推理测试：
+    ```bash
+    python3 ../run.py --input_text "你好，请介绍一下你自己" \
+                      --max_output_len 500 \
+                      --tokenizer_dir /path/to/Qwen1.5-4B-Chat \
+                      --engine_dir /path/to/trt_engines/qwen/1-gpu
+    ```
+
+### 📊 性能测试与基准测试
+
+为了全面评估优化后的模型性能，TensorRT-LLM提供了专业的基准测试工具。
+
+1.  **使用 `trtllm-bench` 进行基准测试**
+    这个工具可以详细评估模型的吞吐量和延迟指标。
+    ```bash
+    # 首先准备一个包含测试提示词的JSONL数据集
+    trtllm-bench throughput \
+      --model /path/to/your/engine/directory \  # 使用构建好的引擎目录
+      --dataset /path/to/dataset.jsonl \
+      --tp 1 \          # 张量并行数，单卡设为1
+      --backend tensorrt \
+      --report_json benchmark_results.json
+    ```
+    **关键性能指标解读**：
+    *   **Request Throughput (req/sec)**: 每秒处理的请求数。
+    *   **Total Output Throughput (tokens/sec)**: 每秒生成的令牌数，衡量**生成速度**的核心指标。
+    *   **Time-to-First-Token (TTFT)**: 从发送请求到收到第一个令牌的时间，影响用户体验。
+    *   **Time-Per-Output-Token (TPOT)**: 平均生成每个令牌所需时间，与生成速度成反比。
+
+2.  **启动推理API服务**
+    若要提供类似OpenAI的API服务，可以使用`trtllm-serve`命令：
+    ```bash
+    trtllm-serve /path/to/trt_engines/qwen/1-gpu \
+                 --host localhost \
+                 --port 8000 \
+                 --max_batch_size 64
+    ```
+    服务启动后，即可通过HTTP请求调用：
+    ```bash
+    curl http://localhost:8000/v1/completions \
+      -H "Content-Type: application/json" \
+      -d '{
+        "model": "qwen",
+        "prompt": "太阳为什么东升西落？",
+        "max_tokens": 500,
+        "temperature": 0.8
+      }'
+    ```
+
+### 💎 关键提示与优化技巧
+
+*   **精度选择**：在A100上，`float16` (FP16) 和 `bfloat16` (BF16) 是常用的推理精度。FP8是更新的低精度格式，可以进一步提升吞吐量并降低显存占用，部分模型已支持。
+*   **插件启用**：在构建引擎时，`--gemm_plugin` 和 `--gpt_attention_plugin` 等插件能通过融合算子来提升性能，建议启用。
+*   **利用A100特性**：A100支持**MIG（多实例GPU）** 技术，可以将单块80GB GPU划分为多个小型GPU实例，从而同时服务多个推理任务，提升资源利用率。
+*   **性能调优**：基准测试时，通过调整 `--concurrency` (并发请求数) 等参数，可以模拟不同负载，找到最优的吞吐量和延迟平衡点。
 
 
 
